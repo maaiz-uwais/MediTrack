@@ -8,7 +8,6 @@ dotenv.config();
 
 // Database connection
 const connectDB = require('./config/db');
-connectDB();
 
 const app = express();
 
@@ -21,6 +20,14 @@ app.use(
 );
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 // Static uploads folder for local reports & prescriptions fallback
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -61,10 +68,14 @@ app.use('/api/*', (req, res) => {
 const { errorHandler } = require('./middleware/errorMiddleware');
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-  console.log(`[MediTrack API Server] Running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`[MediTrack API Server] Running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  });
+}
+
+module.exports = app;
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
